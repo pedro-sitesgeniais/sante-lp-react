@@ -44,11 +44,17 @@ echo ""
 
 # 2. Instalar/Atualizar dependências
 echo -e "${BLUE}📦 Instalando dependências...${NC}"
-npm install
+npm install --legacy-peer-deps
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Erro ao instalar dependências${NC}"
-    exit 1
+    echo -e "${YELLOW}   Tentando com --force...${NC}"
+    npm install --force
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Falha crítica ao instalar dependências${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${GREEN}✅ Dependências instaladas${NC}"
