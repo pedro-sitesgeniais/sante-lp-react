@@ -49,17 +49,101 @@ function App() {
   })
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  // Função para formatar CNPJ
+  const formatCNPJ = (value) => {
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 14) {
+      return numbers
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+    }
+    return value
+  }
+
+  // Função para formatar telefone
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+    }
+    return value
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Form submitted:', formData)
-    alert('Obrigado pelo interesse! Entraremos em contato em breve.')
+    setIsSubmitting(true)
+
+    try {
+      // URL do Google Apps Script Web App (você vai configurar isso)
+      const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SHEET_URL || ''
+
+      if (!GOOGLE_SCRIPT_URL) {
+        alert('⚠️ Configuração pendente! Consulte o arquivo GOOGLE_SHEETS_SETUP.md')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Preparar dados para envio
+      const dataToSend = {
+        timestamp: new Date().toLocaleString('pt-BR'),
+        empresa: formData.empresa,
+        cnpj: formData.cnpj,
+        responsavel: formData.responsavel,
+        telefone: formData.telefone,
+        email: formData.email,
+        origem: 'Landing Page B2B'
+      }
+
+      // Enviar para Google Sheets
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend)
+      })
+
+      // Limpar formulário
+      setFormData({
+        empresa: '',
+        cnpj: '',
+        responsavel: '',
+        telefone: '',
+        email: ''
+      })
+
+      // Feedback de sucesso
+      alert('✅ Obrigado! Seus dados foram enviados com sucesso.\n\nEntraremos em contato em breve com o catálogo e condições especiais para revendedores.')
+
+    } catch (error) {
+      console.error('Erro ao enviar:', error)
+      alert('❌ Ops! Ocorreu um erro ao enviar seus dados.\n\nPor favor, tente novamente ou entre em contato pelo WhatsApp: (17) 9 9198-2372')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e) => {
+    const { name, value } = e.target
+    let formattedValue = value
+
+    // Aplicar máscaras
+    if (name === 'cnpj') {
+      formattedValue = formatCNPJ(value)
+    } else if (name === 'telefone') {
+      formattedValue = formatPhone(value)
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: formattedValue
     })
   }
 
@@ -487,10 +571,11 @@ function App() {
                     </div>
                     <Button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                      disabled={isSubmitting}
+                      className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Package className="w-5 h-5 mr-2" />
-                      Quero Revender Santé Cacau
+                      {isSubmitting ? 'Enviando...' : 'Quero Revender Santé Cacau'}
                     </Button>
                     <p className="text-xs text-gray-500 text-center">
                       Ao enviar, você concorda em receber comunicações comerciais da Santé Cacau
